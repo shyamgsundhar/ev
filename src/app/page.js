@@ -1,25 +1,44 @@
-"use client"; // Needed for React hooks in Next.js (App Router)
+"use client";
 
 import { useEffect, useState } from "react";
 
 export default function Page() {
-  const [queries, setQueries] = useState([]); // Store WebSocket data
+  const [queries, setQueries] = useState([]);
 
   useEffect(() => {
-    const socket = new WebSocket("wss://your-websocket-url"); // Replace with actual WebSocket URL
+    const socket = new WebSocket("ws://localhost:3001");
 
-    socket.onmessage = (event) => {
+    socket.onopen = () => console.log("✅ WebSocket connected");
+    socket.onerror = (error) => console.error("❌ WebSocket error:", error);
+    socket.onclose = () => console.log("⚠️ WebSocket disconnected");
+
+    socket.onmessage = async (event) => {
       try {
-        const newData = JSON.parse(event.data); // Parse WebSocket JSON data
-
-        // Append new data to queries array
+        let messageData = event.data;
+        if (messageData instanceof Blob) {
+          messageData = await messageData.text();
+        }
+    
+        if (messageData instanceof ArrayBuffer) {
+          messageData = new TextDecoder("utf-8").decode(messageData);
+        }
+    
+        console.log("📩 Raw WebSocket message:", messageData);
+    
+        const newData = JSON.parse(messageData);
+        console.log("📊 Parsed JSON:", newData);
+    
         setQueries((prevQueries) => [...prevQueries, newData]);
       } catch (error) {
-        console.error("Error parsing WebSocket data:", error);
+        console.error("❌ Error parsing WebSocket data:", error);
       }
     };
+    
 
-    return () => socket.close(); // Cleanup WebSocket on unmount
+    return () => {
+      console.log("🔌 Closing WebSocket connection...");
+      socket.close();
+    };
   }, []);
 
   return (
